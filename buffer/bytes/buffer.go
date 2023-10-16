@@ -2,9 +2,11 @@ package bytes
 
 import (
 	"encoding/binary"
-	"github.com/godyy/gutils/buffer"
-	"github.com/pkg/errors"
+	"errors"
 	"io"
+
+	"github.com/godyy/gutils/buffer"
+	pkg_errors "github.com/pkg/errors"
 )
 
 // ErrBufferTooLarge is passed to panic if memory cannot be allocated to store data in a buffer.
@@ -386,7 +388,7 @@ func (b *Buffer) ReadString() (string, error) {
 		return "", io.EOF
 	}
 	if n < 0 {
-		return "", errors.WithMessage(ErrVarintOverflow, "read length")
+		return "", pkg_errors.WithMessage(ErrVarintOverflow, "read length")
 	}
 
 	l := int(i)
