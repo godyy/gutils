@@ -64,6 +64,22 @@ func (b *Buffer) Reset() {
 	b.off = 0
 }
 
+func (b *Buffer) ResetCap(minCap, maxCap int) {
+	if minCap > maxCap {
+		panic("bytes.Buffer.ResetCap: minCap > maxCap")
+	}
+	if minCap < smallBufferSize {
+		minCap = smallBufferSize
+	}
+
+	if cap(b.buf) > maxCap {
+		b.buf = make([]byte, 0, minCap)
+		b.off = 0
+	} else {
+		b.Reset()
+	}
+}
+
 func (b *Buffer) Readable() int {
 	return len(b.buf) - b.off
 }
