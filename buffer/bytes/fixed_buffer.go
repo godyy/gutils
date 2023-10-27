@@ -2,9 +2,11 @@ package bytes
 
 import (
 	"encoding/binary"
+	"io"
+	"math"
+
 	"github.com/godyy/gutils/buffer"
 	"github.com/pkg/errors"
-	"io"
 )
 
 // FixedBuffer 定长字节缓冲区
@@ -234,7 +236,107 @@ func (b *FixedBuffer) WriteBool(v bool) error {
 	}
 }
 
-func (b *FixedBuffer) ReadVarint() (int64, error) {
+func (b *FixedBuffer) ReadVarint16() (int16, error) {
+	i, n := binary.Varint(b.buf[b.r:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen16 {
+		return 0, ErrVarintOverflow
+	}
+	b.r += n
+	return int16(i), nil
+}
+
+func (b *FixedBuffer) WriteVarint16(i int16) error {
+	var buf [MaxVarintLen16]byte
+	n := binary.PutVarint(buf[:], int64(i))
+	l := b.Writable()
+	if l < n {
+		return buffer.ErrExceedBufferLimit
+	}
+	b.slideReadable()
+	copy(b.buf[b.w:], buf[:n])
+	b.w += n
+	return nil
+}
+
+func (b *FixedBuffer) ReadUvarint16() (uint16, error) {
+	i, n := binary.Uvarint(b.buf[b.r:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen16 {
+		return 0, ErrVarintOverflow
+	}
+	b.r += n
+	return uint16(i), nil
+}
+
+func (b *FixedBuffer) WriteUvarint16(i uint16) error {
+	var buf [MaxVarintLen16]byte
+	n := binary.PutUvarint(buf[:], uint64(i))
+	l := b.Writable()
+	if l < n {
+		return buffer.ErrExceedBufferLimit
+	}
+	b.slideReadable()
+	copy(b.buf[b.w:], buf[:n])
+	b.w += n
+	return nil
+}
+
+func (b *FixedBuffer) ReadVarint32() (int32, error) {
+	i, n := binary.Varint(b.buf[b.r:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen32 {
+		return 0, ErrVarintOverflow
+	}
+	b.r += n
+	return int32(i), nil
+}
+
+func (b *FixedBuffer) WriteVarint32(i int32) error {
+	var buf [MaxVarintLen32]byte
+	n := binary.PutVarint(buf[:], int64(i))
+	l := b.Writable()
+	if l < n {
+		return buffer.ErrExceedBufferLimit
+	}
+	b.slideReadable()
+	copy(b.buf[b.w:], buf[:n])
+	b.w += n
+	return nil
+}
+
+func (b *FixedBuffer) ReadUvarint32() (uint32, error) {
+	i, n := binary.Uvarint(b.buf[b.r:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen32 {
+		return 0, ErrVarintOverflow
+	}
+	b.r += n
+	return uint32(i), nil
+}
+
+func (b *FixedBuffer) WriteUvarint32(i uint32) error {
+	var buf [MaxVarintLen32]byte
+	n := binary.PutUvarint(buf[:], uint64(i))
+	l := b.Writable()
+	if l < n {
+		return buffer.ErrExceedBufferLimit
+	}
+	b.slideReadable()
+	copy(b.buf[b.w:], buf[:n])
+	b.w += n
+	return nil
+}
+
+func (b *FixedBuffer) ReadVarint64() (int64, error) {
 	i, n := binary.Varint(b.buf[b.r:])
 	if n == 0 {
 		return 0, io.EOF
@@ -246,8 +348,8 @@ func (b *FixedBuffer) ReadVarint() (int64, error) {
 	return i, nil
 }
 
-func (b *FixedBuffer) WriteVarint(i int64) error {
-	var buf [binary.MaxVarintLen64]byte
+func (b *FixedBuffer) WriteVarint64(i int64) error {
+	var buf [MaxVarintLen64]byte
 	n := binary.PutVarint(buf[:], i)
 	l := b.Writable()
 	if l < n {
@@ -259,7 +361,7 @@ func (b *FixedBuffer) WriteVarint(i int64) error {
 	return nil
 }
 
-func (b *FixedBuffer) ReadUvarint() (uint64, error) {
+func (b *FixedBuffer) ReadUvarint64() (uint64, error) {
 	i, n := binary.Uvarint(b.buf[b.r:])
 	if n == 0 {
 		return 0, io.EOF
@@ -271,8 +373,8 @@ func (b *FixedBuffer) ReadUvarint() (uint64, error) {
 	return i, nil
 }
 
-func (b *FixedBuffer) WriteUvarint(i uint64) error {
-	var buf [binary.MaxVarintLen64]byte
+func (b *FixedBuffer) WriteUvarint64(i uint64) error {
+	var buf [MaxVarintLen64]byte
 	n := binary.PutUvarint(buf[:], i)
 	l := b.Writable()
 	if l < n {
@@ -320,7 +422,7 @@ func (b *FixedBuffer) ReadString() (string, error) {
 	if n == 0 {
 		return "", io.EOF
 	}
-	if n < 0 {
+	if n < 0 || n > MaxStringLenLen {
 		return "", errors.WithMessage(ErrVarintOverflow, "read length")
 	}
 
@@ -334,6 +436,9 @@ func (b *FixedBuffer) ReadString() (string, error) {
 	}
 
 	b.r += n
+	if l == 0 {
+		return "", nil
+	}
 	s := string(b.buf[b.r : b.r+l])
 	b.r += l
 	return s, nil
@@ -341,8 +446,11 @@ func (b *FixedBuffer) ReadString() (string, error) {
 
 func (b *FixedBuffer) WriteString(s string) error {
 	l := len(s)
+	if l > math.MaxInt32 {
+		return buffer.ErrStringLenExceedLimit
+	}
 
-	var buf [binary.MaxVarintLen64]byte
+	var buf [MaxStringLenLen]byte
 	ll := binary.PutVarint(buf[:], int64(l))
 
 	if l+ll > b.Writable() {

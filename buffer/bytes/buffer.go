@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"math"
 
 	"github.com/godyy/gutils/buffer"
 	pkg_errors "github.com/pkg/errors"
@@ -326,7 +327,107 @@ func (b *Buffer) WriteBool(v bool) error {
 	}
 }
 
-func (b *Buffer) ReadVarint() (int64, error) {
+func (b *Buffer) ReadVarint16() (int16, error) {
+	i, n := binary.Varint(b.buf[b.off:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen16 {
+		return 0, ErrVarintOverflow
+	}
+	b.off += n
+	return int16(i), nil
+}
+
+func (b *Buffer) WriteVarint16(i int16) error {
+	var buf [MaxVarintLen16]byte
+	n := binary.PutVarint(buf[:], int64(i))
+
+	m, ok := b.tryGrowByReslice(n)
+	if !ok {
+		m = b.grow(n)
+	}
+
+	n = copy(b.buf[m:m+n], buf[:n])
+	return nil
+}
+
+func (b *Buffer) ReadUvarint16() (uint16, error) {
+	i, n := binary.Uvarint(b.buf[b.off:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen16 {
+		return 0, ErrVarintOverflow
+	}
+	b.off += n
+	return uint16(i), nil
+}
+
+func (b *Buffer) WriteUvarint16(i uint16) error {
+	var buf [MaxVarintLen16]byte
+	n := binary.PutUvarint(buf[:], uint64(i))
+
+	m, ok := b.tryGrowByReslice(n)
+	if !ok {
+		m = b.grow(n)
+	}
+
+	n = copy(b.buf[m:m+n], buf[:n])
+	return nil
+}
+
+func (b *Buffer) ReadVarint32() (int32, error) {
+	i, n := binary.Varint(b.buf[b.off:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen32 {
+		return 0, ErrVarintOverflow
+	}
+	b.off += n
+	return int32(i), nil
+}
+
+func (b *Buffer) WriteVarint32(i int32) error {
+	var buf [MaxVarintLen32]byte
+	n := binary.PutVarint(buf[:], int64(i))
+
+	m, ok := b.tryGrowByReslice(n)
+	if !ok {
+		m = b.grow(n)
+	}
+
+	n = copy(b.buf[m:m+n], buf[:n])
+	return nil
+}
+
+func (b *Buffer) ReadUvarint32() (uint32, error) {
+	i, n := binary.Uvarint(b.buf[b.off:])
+	if n == 0 {
+		return 0, io.EOF
+	}
+	if n < 0 || n > MaxVarintLen32 {
+		return 0, ErrVarintOverflow
+	}
+	b.off += n
+	return uint32(i), nil
+}
+
+func (b *Buffer) WriteUvarint32(i uint32) error {
+	var buf [MaxVarintLen32]byte
+	n := binary.PutUvarint(buf[:], uint64(i))
+
+	m, ok := b.tryGrowByReslice(n)
+	if !ok {
+		m = b.grow(n)
+	}
+
+	n = copy(b.buf[m:m+n], buf[:n])
+	return nil
+}
+
+func (b *Buffer) ReadVarint64() (int64, error) {
 	i, n := binary.Varint(b.buf[b.off:])
 	if n == 0 {
 		return 0, io.EOF
@@ -338,8 +439,8 @@ func (b *Buffer) ReadVarint() (int64, error) {
 	return i, nil
 }
 
-func (b *Buffer) WriteVarint(i int64) error {
-	var buf [binary.MaxVarintLen64]byte
+func (b *Buffer) WriteVarint64(i int64) error {
+	var buf [MaxVarintLen64]byte
 	n := binary.PutVarint(buf[:], i)
 
 	m, ok := b.tryGrowByReslice(n)
@@ -351,7 +452,7 @@ func (b *Buffer) WriteVarint(i int64) error {
 	return nil
 }
 
-func (b *Buffer) ReadUvarint() (uint64, error) {
+func (b *Buffer) ReadUvarint64() (uint64, error) {
 	i, n := binary.Uvarint(b.buf[b.off:])
 	if n == 0 {
 		return 0, io.EOF
@@ -363,8 +464,8 @@ func (b *Buffer) ReadUvarint() (uint64, error) {
 	return i, nil
 }
 
-func (b *Buffer) WriteUvarint(i uint64) error {
-	var buf [binary.MaxVarintLen64]byte
+func (b *Buffer) WriteUvarint64(i uint64) error {
+	var buf [MaxVarintLen64]byte
 	n := binary.PutUvarint(buf[:], i)
 
 	m, ok := b.tryGrowByReslice(n)
@@ -403,7 +504,7 @@ func (b *Buffer) ReadString() (string, error) {
 	if n == 0 {
 		return "", io.EOF
 	}
-	if n < 0 {
+	if n < 0 || n > MaxStringLenLen {
 		return "", pkg_errors.WithMessage(ErrVarintOverflow, "read length")
 	}
 
@@ -417,6 +518,9 @@ func (b *Buffer) ReadString() (string, error) {
 	}
 
 	b.off += n
+	if l == 0 {
+		return "", nil
+	}
 	s := string(b.buf[b.off : b.off+l])
 	b.off += l
 	return s, nil
@@ -424,8 +528,11 @@ func (b *Buffer) ReadString() (string, error) {
 
 func (b *Buffer) WriteString(s string) error {
 	l := len(s)
+	if l > math.MaxInt32 {
+		return buffer.ErrStringLenExceedLimit
+	}
 
-	var buf [binary.MaxVarintLen64]byte
+	var buf [MaxStringLenLen]byte
 	ll := binary.PutVarint(buf[:], int64(l))
 
 	m, ok := b.tryGrowByReslice(ll + l)
