@@ -51,6 +51,9 @@ type Logger interface {
 	// Origin 获取源logger
 	Origin() Logger
 
+	// Root 获取最源头的logger
+	Root() Logger
+
 	// Debug for DebugLevel
 	Debug(v ...any)
 	Debugln(v ...any)
@@ -291,7 +294,17 @@ func (l *logger) clone() *logger {
 }
 
 func (l *logger) Origin() Logger {
+	if l.origin == nil {
+		return l
+	}
 	return l.origin
+}
+
+func (l *logger) Root() Logger {
+	if l.origin == nil {
+		return l
+	}
+	return l.origin.Root()
 }
 
 func (l *logger) Debug(v ...any) {
