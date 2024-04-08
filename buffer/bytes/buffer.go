@@ -24,79 +24,83 @@ type Buffer struct {
 	off int
 }
 
-func NewBuffer(cap ...int) *Buffer {
-	c := smallBufferSize
-	if len(cap) > 0 {
-		c = cap[0]
-		if c <= 0 {
-			panic("bytes.NewBuffer: cap <= 0")
-		}
+// NewBufferWithCap 已指定的容量创建Buffer
+func NewBufferWithCap(cap int) *Buffer {
+	if cap < smallBufferSize {
+		cap = smallBufferSize
 	}
 	return &Buffer{
-		buf: make([]byte, 0, c),
+		buf: make([]byte, 0, cap),
 		off: 0,
 	}
 }
 
-func NewBufferWithBuf(buf ...[]byte) *Buffer {
+// NewBuffer 指定buf创建Buffer
+func NewBuffer(buf []byte) *Buffer {
+	if buf == nil {
+		buf = make([]byte, 0, smallBufferSize)
+	}
+
 	b := &Buffer{
-		buf: nil,
+		buf: buf,
 		off: 0,
-	}
-	if len(buf) > 0 {
-		b.buf = buf[0]
-	}
-	if b.buf == nil {
-		b.buf = make([]byte, 0, smallBufferSize)
 	}
 	return b
 }
 
+// Size 获取buf的大小
 func (b *Buffer) Size() int {
 	return len(b.buf)
 }
 
+// Cap 获取buf的容量
 func (b *Buffer) Cap() int {
 	return cap(b.buf)
 }
 
+// Reset 重置buf
 func (b *Buffer) Reset() {
-	b.buf = b.buf[:0]
+	if b.buf != nil {
+		b.buf = b.buf[:0]
+	}
 	b.off = 0
 }
 
-func (b *Buffer) ResetCap(minCap, maxCap int) {
-	if minCap > maxCap {
-		panic("bytes.Buffer.ResetCap: minCap > maxCap")
-	}
-	if minCap < smallBufferSize {
-		minCap = smallBufferSize
-	}
-
-	if cap(b.buf) > maxCap {
-		b.buf = make([]byte, 0, minCap)
-		b.off = 0
-	} else {
-		b.Reset()
-	}
+// SetBuf 设置buf并返回之前的buf
+func (b *Buffer) SetBuf(buf []byte) []byte {
+	old := b.buf
+	b.buf = buf
+	b.off = 0
+	return old
 }
 
+// Readable 获取可读取字节数
 func (b *Buffer) Readable() int {
 	return len(b.buf) - b.off
 }
 
+// Writable 获取根据当前容量还可写入的字节数
 func (b *Buffer) Writable() int {
 	return cap(b.buf) - len(b.buf)
 }
 
+// Data 获取buf中的完整数据
 func (b *Buffer) Data() []byte {
+	if b.buf == nil {
+		return nil
+	}
 	return b.buf[:]
 }
 
+// UnreadData 获取buf中的未读数据
 func (b *Buffer) UnreadData() []byte {
+	if b.buf == nil {
+		return nil
+	}
 	return b.buf[b.off:]
 }
 
+// tryGrowByReslice 尝试扩张buf
 func (b *Buffer) tryGrowByReslice(n int) (int, bool) {
 	if l := len(b.buf); n <= cap(b.buf)-l {
 		b.buf = b.buf[:l+n]
@@ -132,6 +136,7 @@ func growBuffSlice(b []byte, n int) []byte {
 	return b2[:len(b)]
 }
 
+// grow 扩张buf使其能容纳n个字节
 func (b *Buffer) grow(n int) int {
 	m := b.Readable()
 	// If buffer is empty, reset to recover space.
@@ -171,12 +176,15 @@ func (b *Buffer) grow(n int) int {
 // buffer without another allocation.
 // If n is negative, Grow will panic.
 // If the buffer can't grow it will panic with ErrTooLarge.
-func (b *Buffer) Grow(n int) {
+// If size is true, it grow the buffer's size.
+func (b *Buffer) Grow(n int, size ...bool) {
 	if n < 0 {
 		panic("bytes.Buffer.Grow: n < 0")
 	}
 	m := b.grow(n)
-	b.buf = b.buf[:m]
+	if len(size) <= 0 || !size[0] {
+		b.buf = b.buf[:m]
+	}
 }
 
 func (b *Buffer) ReadByte() (c byte, err error) {
@@ -233,7 +241,7 @@ func (b *Buffer) ReadUint16() (i uint16, err error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 
-	i = binary.BigEndian.Uint16(b.buf[b.off : b.off+2])
+	i = binary.NativeEndian.Uint16(b.buf[b.off : b.off+2])
 	b.off += 2
 	return
 }
@@ -243,7 +251,7 @@ func (b *Buffer) WriteUint16(i uint16) error {
 	if !ok {
 		m = b.grow(2)
 	}
-	binary.BigEndian.PutUint16(b.buf[m:m+2], i)
+	binary.NativeEndian.PutUint16(b.buf[m:m+2], i)
 	return nil
 }
 
@@ -265,7 +273,7 @@ func (b *Buffer) ReadUint32() (i uint32, err error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 
-	i = binary.BigEndian.Uint32(b.buf[b.off : b.off+4])
+	i = binary.NativeEndian.Uint32(b.buf[b.off : b.off+4])
 	b.off += 4
 	return
 }
@@ -275,7 +283,7 @@ func (b *Buffer) WriteUint32(i uint32) error {
 	if !ok {
 		m = b.grow(4)
 	}
-	binary.BigEndian.PutUint32(b.buf[m:m+4], i)
+	binary.NativeEndian.PutUint32(b.buf[m:m+4], i)
 	return nil
 }
 
@@ -297,12 +305,204 @@ func (b *Buffer) ReadUint64() (i uint64, err error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 
-	i = binary.BigEndian.Uint64(b.buf[b.off : b.off+8])
+	i = binary.NativeEndian.Uint64(b.buf[b.off : b.off+8])
 	b.off += 8
 	return
 }
 
 func (b *Buffer) WriteUint64(i uint64) error {
+	m, ok := b.tryGrowByReslice(8)
+	if !ok {
+		m = b.grow(8)
+	}
+	binary.NativeEndian.PutUint64(b.buf[m:m+8], i)
+	return nil
+}
+
+func (b *Buffer) ReadLitInt16() (int16, error) {
+	n, err := b.ReadLitUint16()
+	return int16(n), err
+}
+
+func (b *Buffer) WriteLitInt16(i int16) error {
+	return b.WriteLitUint16(uint16(i))
+}
+
+func (b *Buffer) ReadLitUint16() (i uint16, err error) {
+	l := b.Readable()
+	if l == 0 {
+		return 0, io.EOF
+	}
+	if l < 2 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	i = binary.LittleEndian.Uint16(b.buf[b.off : b.off+2])
+	b.off += 2
+	return
+}
+
+func (b *Buffer) WriteLitUint16(i uint16) error {
+	m, ok := b.tryGrowByReslice(2)
+	if !ok {
+		m = b.grow(2)
+	}
+	binary.LittleEndian.PutUint16(b.buf[m:m+2], i)
+	return nil
+}
+
+func (b *Buffer) ReadLitInt32() (int32, error) {
+	n, err := b.ReadLitUint32()
+	return int32(n), err
+}
+
+func (b *Buffer) WriteLitInt32(i int32) error {
+	return b.WriteLitUint32(uint32(i))
+}
+
+func (b *Buffer) ReadLitUint32() (i uint32, err error) {
+	l := b.Readable()
+	if l == 0 {
+		return 0, io.EOF
+	}
+	if l < 2 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	i = binary.LittleEndian.Uint32(b.buf[b.off : b.off+4])
+	b.off += 4
+	return
+}
+
+func (b *Buffer) WriteLitUint32(i uint32) error {
+	m, ok := b.tryGrowByReslice(4)
+	if !ok {
+		m = b.grow(4)
+	}
+	binary.LittleEndian.PutUint32(b.buf[m:m+4], i)
+	return nil
+}
+
+func (b *Buffer) ReadLitInt64() (int64, error) {
+	n, err := b.ReadLitUint64()
+	return int64(n), err
+}
+
+func (b *Buffer) WriteLitInt64(i int64) error {
+	return b.WriteLitUint64(uint64(i))
+}
+
+func (b *Buffer) ReadLitUint64() (i uint64, err error) {
+	l := b.Readable()
+	if l == 0 {
+		return 0, io.EOF
+	}
+	if l < 2 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	i = binary.LittleEndian.Uint64(b.buf[b.off : b.off+8])
+	b.off += 8
+	return
+}
+
+func (b *Buffer) WriteLitUint64(i uint64) error {
+	m, ok := b.tryGrowByReslice(8)
+	if !ok {
+		m = b.grow(8)
+	}
+	binary.LittleEndian.PutUint64(b.buf[m:m+8], i)
+	return nil
+}
+
+func (b *Buffer) ReadBigInt16() (int16, error) {
+	n, err := b.ReadBigUint16()
+	return int16(n), err
+}
+
+func (b *Buffer) WriteBigInt16(i int16) error {
+	return b.WriteBigUint16(uint16(i))
+}
+
+func (b *Buffer) ReadBigUint16() (i uint16, err error) {
+	l := b.Readable()
+	if l == 0 {
+		return 0, io.EOF
+	}
+	if l < 2 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	i = binary.BigEndian.Uint16(b.buf[b.off : b.off+2])
+	b.off += 2
+	return
+}
+
+func (b *Buffer) WriteBigUint16(i uint16) error {
+	m, ok := b.tryGrowByReslice(2)
+	if !ok {
+		m = b.grow(2)
+	}
+	binary.BigEndian.PutUint16(b.buf[m:m+2], i)
+	return nil
+}
+
+func (b *Buffer) ReadBigInt32() (int32, error) {
+	n, err := b.ReadBigUint32()
+	return int32(n), err
+}
+
+func (b *Buffer) WriteBigInt32(i int32) error {
+	return b.WriteLitUint32(uint32(i))
+}
+
+func (b *Buffer) ReadBigUint32() (i uint32, err error) {
+	l := b.Readable()
+	if l == 0 {
+		return 0, io.EOF
+	}
+	if l < 2 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	i = binary.BigEndian.Uint32(b.buf[b.off : b.off+4])
+	b.off += 4
+	return
+}
+
+func (b *Buffer) WriteBigUint32(i uint32) error {
+	m, ok := b.tryGrowByReslice(4)
+	if !ok {
+		m = b.grow(4)
+	}
+	binary.BigEndian.PutUint32(b.buf[m:m+4], i)
+	return nil
+}
+
+func (b *Buffer) ReadBigInt64() (int64, error) {
+	n, err := b.ReadBigUint64()
+	return int64(n), err
+}
+
+func (b *Buffer) WriteBigInt64(i int64) error {
+	return b.WriteBigUint64(uint64(i))
+}
+
+func (b *Buffer) ReadBigUint64() (i uint64, err error) {
+	l := b.Readable()
+	if l == 0 {
+		return 0, io.EOF
+	}
+	if l < 2 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	i = binary.BigEndian.Uint64(b.buf[b.off : b.off+8])
+	b.off += 8
+	return
+}
+
+func (b *Buffer) WriteBigUint64(i uint64) error {
 	m, ok := b.tryGrowByReslice(8)
 	if !ok {
 		m = b.grow(8)
@@ -339,7 +539,7 @@ func (b *Buffer) ReadVarint16() (int16, error) {
 	return int16(i), nil
 }
 
-func (b *Buffer) WriteVarint16(i int16) error {
+func (b *Buffer) WriteVarint16(i int16) (int, error) {
 	var buf [MaxVarintLen16]byte
 	n := binary.PutVarint(buf[:], int64(i))
 
@@ -348,8 +548,8 @@ func (b *Buffer) WriteVarint16(i int16) error {
 		m = b.grow(n)
 	}
 
-	n = copy(b.buf[m:m+n], buf[:n])
-	return nil
+	copy(b.buf[m:m+n], buf[:n])
+	return n, nil
 }
 
 func (b *Buffer) ReadUvarint16() (uint16, error) {
@@ -364,7 +564,7 @@ func (b *Buffer) ReadUvarint16() (uint16, error) {
 	return uint16(i), nil
 }
 
-func (b *Buffer) WriteUvarint16(i uint16) error {
+func (b *Buffer) WriteUvarint16(i uint16) (int, error) {
 	var buf [MaxVarintLen16]byte
 	n := binary.PutUvarint(buf[:], uint64(i))
 
@@ -373,8 +573,8 @@ func (b *Buffer) WriteUvarint16(i uint16) error {
 		m = b.grow(n)
 	}
 
-	n = copy(b.buf[m:m+n], buf[:n])
-	return nil
+	copy(b.buf[m:m+n], buf[:n])
+	return n, nil
 }
 
 func (b *Buffer) ReadVarint32() (int32, error) {
@@ -389,7 +589,7 @@ func (b *Buffer) ReadVarint32() (int32, error) {
 	return int32(i), nil
 }
 
-func (b *Buffer) WriteVarint32(i int32) error {
+func (b *Buffer) WriteVarint32(i int32) (int, error) {
 	var buf [MaxVarintLen32]byte
 	n := binary.PutVarint(buf[:], int64(i))
 
@@ -398,8 +598,8 @@ func (b *Buffer) WriteVarint32(i int32) error {
 		m = b.grow(n)
 	}
 
-	n = copy(b.buf[m:m+n], buf[:n])
-	return nil
+	copy(b.buf[m:m+n], buf[:n])
+	return n, nil
 }
 
 func (b *Buffer) ReadUvarint32() (uint32, error) {
@@ -414,7 +614,7 @@ func (b *Buffer) ReadUvarint32() (uint32, error) {
 	return uint32(i), nil
 }
 
-func (b *Buffer) WriteUvarint32(i uint32) error {
+func (b *Buffer) WriteUvarint32(i uint32) (int, error) {
 	var buf [MaxVarintLen32]byte
 	n := binary.PutUvarint(buf[:], uint64(i))
 
@@ -423,8 +623,8 @@ func (b *Buffer) WriteUvarint32(i uint32) error {
 		m = b.grow(n)
 	}
 
-	n = copy(b.buf[m:m+n], buf[:n])
-	return nil
+	copy(b.buf[m:m+n], buf[:n])
+	return n, nil
 }
 
 func (b *Buffer) ReadVarint64() (int64, error) {
@@ -439,7 +639,7 @@ func (b *Buffer) ReadVarint64() (int64, error) {
 	return i, nil
 }
 
-func (b *Buffer) WriteVarint64(i int64) error {
+func (b *Buffer) WriteVarint64(i int64) (int, error) {
 	var buf [MaxVarintLen64]byte
 	n := binary.PutVarint(buf[:], i)
 
@@ -448,8 +648,8 @@ func (b *Buffer) WriteVarint64(i int64) error {
 		m = b.grow(n)
 	}
 
-	n = copy(b.buf[m:m+n], buf[:n])
-	return nil
+	copy(b.buf[m:m+n], buf[:n])
+	return n, nil
 }
 
 func (b *Buffer) ReadUvarint64() (uint64, error) {
@@ -464,7 +664,7 @@ func (b *Buffer) ReadUvarint64() (uint64, error) {
 	return i, nil
 }
 
-func (b *Buffer) WriteUvarint64(i uint64) error {
+func (b *Buffer) WriteUvarint64(i uint64) (int, error) {
 	var buf [MaxVarintLen64]byte
 	n := binary.PutUvarint(buf[:], i)
 
@@ -473,8 +673,8 @@ func (b *Buffer) WriteUvarint64(i uint64) error {
 		m = b.grow(n)
 	}
 
-	n = copy(b.buf[m:m+n], buf[:n])
-	return nil
+	copy(b.buf[m:m+n], buf[:n])
+	return n, nil
 }
 
 func (b *Buffer) Read(p []byte) (int, error) {
@@ -588,6 +788,7 @@ func (b *Buffer) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
+// Peek 自buf中提取n个字节，同时并不会更新已读偏移
 func (b *Buffer) Peek(n int) ([]byte, error) {
 	if n > len(b.buf) {
 		return nil, buffer.ErrExceedBufferLimit
@@ -600,6 +801,7 @@ func (b *Buffer) Peek(n int) ([]byte, error) {
 	return b.buf[b.off : b.off+n], nil
 }
 
+// Skip 自buf中跳过n个字节
 func (b *Buffer) Skip(n int) (skipped int, err error) {
 	if n > len(b.buf) {
 		return 0, buffer.ErrExceedBufferLimit

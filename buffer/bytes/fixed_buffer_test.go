@@ -58,63 +58,63 @@ func TestFixedBuffer(t *testing.T) {
 	}
 
 	vMinI16 := int16(math.MinInt16)
-	if err := b.WriteVarint16(vMinI16); err != nil {
+	if _, err := b.WriteVarint16(vMinI16); err != nil {
 		t.Fatalf("write min varint16 %d: %v", vMinI16, err)
 	} else {
 		t.Logf("write min varint16 %d", vMinI16)
 	}
 
 	vMaxI16 := int16(math.MaxInt16)
-	if err := b.WriteVarint16(vMaxI16); err != nil {
+	if _, err := b.WriteVarint16(vMaxI16); err != nil {
 		t.Fatalf("write max varint16 %d: %v", vMaxI16, err)
 	} else {
 		t.Logf("write max varint16 %d", vMaxI16)
 	}
 
 	vMaxUI16 := uint16(math.MaxUint16)
-	if err := b.WriteUvarint16(vMaxUI16); err != nil {
+	if _, err := b.WriteUvarint16(vMaxUI16); err != nil {
 		t.Fatalf("write max varuint16 %d: %v", vMaxUI16, err)
 	} else {
 		t.Logf("write max varuint16 %d", vMaxUI16)
 	}
 
 	vMinI32 := int32(math.MinInt32)
-	if err := b.WriteVarint32(vMinI32); err != nil {
+	if _, err := b.WriteVarint32(vMinI32); err != nil {
 		t.Fatalf("write min varint32 %d: %v", vMinI32, err)
 	} else {
 		t.Logf("write min varint32 %d", vMinI32)
 	}
 
 	vMaxI32 := int32(math.MaxInt32)
-	if err := b.WriteVarint32(vMaxI32); err != nil {
+	if _, err := b.WriteVarint32(vMaxI32); err != nil {
 		t.Fatalf("write max varint32 %d: %v", vMaxI32, err)
 	} else {
 		t.Logf("write max varint32 %d", vMaxI32)
 	}
 
 	vMaxUI32 := uint32(math.MaxUint32)
-	if err := b.WriteUvarint32(vMaxUI32); err != nil {
+	if _, err := b.WriteUvarint32(vMaxUI32); err != nil {
 		t.Fatalf("write max varuint32 %d: %v", vMaxUI32, err)
 	} else {
 		t.Logf("write max varuint32 %d", vMaxUI32)
 	}
 
 	vMinI64 := int64(math.MinInt64)
-	if err := b.WriteVarint64(vMinI64); err != nil {
+	if _, err := b.WriteVarint64(vMinI64); err != nil {
 		t.Fatalf("write min varint64 %d: %v", vMinI64, err)
 	} else {
 		t.Logf("write min varint64 %d", vMinI64)
 	}
 
 	vMaxI64 := int64(math.MaxInt64)
-	if err := b.WriteVarint64(vMaxI64); err != nil {
+	if _, err := b.WriteVarint64(vMaxI64); err != nil {
 		t.Fatalf("write max varint64 %d: %v", vMaxI64, err)
 	} else {
 		t.Logf("write max varint64 %d", vMaxI64)
 	}
 
 	vMaxUI64 := uint64(math.MaxUint64)
-	if err := b.WriteUvarint64(vMaxUI64); err != nil {
+	if _, err := b.WriteUvarint64(vMaxUI64); err != nil {
 		t.Fatalf("write max varuint64 %d: %v", vMaxUI64, err)
 	} else {
 		t.Logf("write max varuint64 %d", vMaxUI64)
