@@ -9,20 +9,20 @@ type testElement struct {
 	index int
 }
 
-func (t testElement) Less(element Element) bool {
+func (t testElement) HeapLess(element Element) bool {
 	return t.value < element.(testElement).value
 }
 
-func (t testElement) SetIndex(i int) {
+func (t testElement) SetHeapIndex(i int) {
 	t.index = i
 }
 
-func (t testElement) Index() int {
+func (t testElement) HeapIndex() int {
 	return t.index
 }
 
 func TestHeap(t *testing.T) {
-	heap := NewHeap(10)
+	heap := NewHeap[testElement](10)
 
 	for i := 0; i < 1e2; i++ {
 		heap.Push(testElement{
