@@ -22,7 +22,7 @@ func (t testElement) Index() int {
 }
 
 func TestHeap(t *testing.T) {
-	heap := NewHeap(10)
+	heap := NewHeap[testElement](10)
 
 	for i := 0; i < 1e2; i++ {
 		heap.Push(testElement{
