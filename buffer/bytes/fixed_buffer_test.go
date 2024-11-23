@@ -13,7 +13,7 @@ import (
 func TestFixedBuffer(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
-	b := NewFixedBuffer(128)
+	b := NewFixedBuffer(140)
 
 	c := byte(rand.Intn(128))
 	if err := b.WriteByte(c); err != nil {
@@ -118,6 +118,20 @@ func TestFixedBuffer(t *testing.T) {
 		t.Fatalf("write max varuint64 %d: %v", vMaxUI64, err)
 	} else {
 		t.Logf("write max varuint64 %d", vMaxUI64)
+	}
+
+	vMaxF32 := float32(math.MaxFloat32)
+	if err := b.WriteFloat32(vMaxF32); err != nil {
+		t.Fatalf("write max float32 %f: %v", vMaxF32, err)
+	} else {
+		t.Logf("write max float32 %f", vMaxF32)
+	}
+
+	vMaxF64 := float64(math.MaxFloat64)
+	if err := b.WriteFloat64(vMaxF64); err != nil {
+		t.Fatalf("write max float64 %f: %v", vMaxF64, err)
+	} else {
+		t.Logf("write max float64 %f", vMaxF64)
 	}
 
 	t.Logf("buffered: %d, available: %d", b.Readable(), b.Writable())

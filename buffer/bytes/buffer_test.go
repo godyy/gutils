@@ -121,6 +121,20 @@ func TestBuffer(t *testing.T) {
 		t.Logf("write max varuint64 %d", vMaxUI64)
 	}
 
+	vMaxF32 := float32(math.MaxFloat32)
+	if err := b.WriteFloat32(vMaxF32); err != nil {
+		t.Fatalf("write max float32 %f: %v", vMaxF32, err)
+	} else {
+		t.Logf("write max float32 %f", vMaxF32)
+	}
+
+	vMaxF64 := float64(math.MaxFloat64)
+	if err := b.WriteFloat64(vMaxF64); err != nil {
+		t.Fatalf("write max float64 %f: %v", vMaxF64, err)
+	} else {
+		t.Logf("write max float64 %f", vMaxF64)
+	}
+
 	t.Logf("size:%d, cap:%d, reaable: %d, writable: %d", b.Size(), b.Cap(), b.Readable(), b.Writable())
 
 	if cc, err := b.ReadByte(); err != nil {
