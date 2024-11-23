@@ -2,7 +2,6 @@ package bytes
 
 import (
 	"encoding/binary"
-	"github.com/godyy/gutils/params"
 	"io"
 	"math"
 
@@ -124,164 +123,67 @@ func (b *FixedBuffer) WriteUint8(i uint8) error {
 }
 
 func (b *FixedBuffer) ReadInt16() (int16, error) {
-	n, err := b.ReadUint16()
-	return int16(n), err
+	return b.readInt16(nativeEndian)
 }
 
 func (b *FixedBuffer) WriteInt16(i int16) error {
-	return b.WriteUint16(uint16(i))
+	return b.writeInt16(i, nativeEndian)
 }
 
-func (b *FixedBuffer) ReadUint16() (i uint16, err error) {
-	l := b.Readable()
-	if l == 0 {
-		return 0, io.EOF
-	}
-	if l < 2 {
-		return 0, io.ErrUnexpectedEOF
-	}
-
-	i = binary.NativeEndian.Uint16(b.buf[b.r : b.r+2])
-	b.r += 2
-	return
+func (b *FixedBuffer) ReadUint16() (uint16, error) {
+	return b.readUint16(nativeEndian)
 }
 
 func (b *FixedBuffer) WriteUint16(i uint16) error {
-	l := b.Writable()
-	if l == 0 {
-		return buffer.ErrBufferFull
-	}
-	if l < 2 {
-		return buffer.ErrExceedBufferLimit
-	}
-
-	b.slideReadable()
-
-	binary.NativeEndian.PutUint16(b.buf[b.w:b.w+2], i)
-	b.w += 2
-	return nil
+	return b.writeUint16(i, nativeEndian)
 }
 
 func (b *FixedBuffer) ReadInt32() (int32, error) {
-	n, err := b.ReadUint32()
-	return int32(n), err
+	return b.readInt32(nativeEndian)
 }
 
 func (b *FixedBuffer) WriteInt32(i int32) error {
-	return b.WriteUint32(uint32(i))
+	return b.writeInt32(i, nativeEndian)
 }
 
-func (b *FixedBuffer) ReadUint32() (i uint32, err error) {
-	l := b.Readable()
-	if l == 0 {
-		return 0, io.EOF
-	}
-	if l < 2 {
-		return 0, io.ErrUnexpectedEOF
-	}
-
-	i = binary.NativeEndian.Uint32(b.buf[b.r : b.r+4])
-	b.r += 4
-	return
+func (b *FixedBuffer) ReadUint32() (uint32, error) {
+	return b.readUint32(nativeEndian)
 }
 
 func (b *FixedBuffer) WriteUint32(i uint32) error {
-	l := b.Writable()
-	if l == 0 {
-		return buffer.ErrBufferFull
-	}
-	if l < 4 {
-		return buffer.ErrExceedBufferLimit
-	}
-
-	b.slideReadable()
-
-	binary.NativeEndian.PutUint32(b.buf[b.w:b.w+4], i)
-	b.w += 4
-	return nil
+	return b.writeUint32(i, nativeEndian)
 }
 
 func (b *FixedBuffer) ReadInt64() (int64, error) {
-	n, err := b.ReadUint64()
-	return int64(n), err
+	return b.readInt64(nativeEndian)
 }
 
 func (b *FixedBuffer) WriteInt64(i int64) error {
-	return b.WriteUint64(uint64(i))
+	return b.writeInt64(i, nativeEndian)
 }
 
-func (b *FixedBuffer) ReadUint64() (i uint64, err error) {
-	l := b.Readable()
-	if l == 0 {
-		return 0, io.EOF
-	}
-	if l < 2 {
-		return 0, io.ErrUnexpectedEOF
-	}
-
-	i = binary.NativeEndian.Uint64(b.buf[b.r : b.r+8])
-	b.r += 8
-	return
+func (b *FixedBuffer) ReadUint64() (uint64, error) {
+	return b.readUint64(nativeEndian)
 }
 
 func (b *FixedBuffer) WriteUint64(i uint64) error {
-	l := b.Writable()
-	if l == 0 {
-		return buffer.ErrBufferFull
-	}
-	if l < 8 {
-		return buffer.ErrExceedBufferLimit
-	}
-
-	b.slideReadable()
-
-	binary.NativeEndian.PutUint64(b.buf[b.w:b.w+8], i)
-	b.w += 8
-	return nil
+	return b.writeUint64(i, nativeEndian)
 }
 
-func (b *FixedBuffer) WriteFloat32(f float32, order ...binary.ByteOrder) error {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [4]byte
-	if _, err := binary.Encode(buf[:], od, f); err != nil {
-		return err
-	}
-	_, err := b.Write(buf[:])
-	return err
+func (b *FixedBuffer) ReadFloat32() (float32, error) {
+	return b.readFloat32(nativeEndian)
 }
 
-func (b *FixedBuffer) ReadFloat32(order ...binary.ByteOrder) (f float32, err error) {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [4]byte
-	if _, err = b.Read(buf[:]); err != nil {
-		return
-	}
-	if _, err = binary.Decode(buf[:], od, &f); err != nil {
-		return
-	}
-	return
+func (b *FixedBuffer) WriteFloat32(f float32) error {
+	return b.writeFloat32(f, nativeEndian)
 }
 
-func (b *FixedBuffer) WriteFloat64(f float64, order ...binary.ByteOrder) error {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [8]byte
-	if _, err := binary.Encode(buf[:], od, f); err != nil {
-		return err
-	}
-	_, err := b.Write(buf[:])
-	return err
+func (b *FixedBuffer) ReadFloat64() (float64, error) {
+	return b.readFloat64(nativeEndian)
 }
 
-func (b *FixedBuffer) ReadFloat64(order ...binary.ByteOrder) (f float64, err error) {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [8]byte
-	if _, err = b.Read(buf[:]); err != nil {
-		return
-	}
-	if _, err = binary.Decode(buf[:], od, &f); err != nil {
-		return
-	}
-	return
+func (b *FixedBuffer) WriteFloat64(f float64) error {
+	return b.writeFloat64(f, nativeEndian)
 }
 
 func (b *FixedBuffer) ReadBool() (bool, error) {

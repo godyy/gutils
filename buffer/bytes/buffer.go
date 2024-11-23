@@ -3,7 +3,6 @@ package bytes
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/godyy/gutils/params"
 	"io"
 	"math"
 
@@ -225,99 +224,67 @@ func (b *Buffer) WriteUint8(i uint8) error {
 }
 
 func (b *Buffer) ReadInt16() (int16, error) {
-	n, err := b.ReadUint16()
-	return int16(n), err
+	return b.readInt16(nativeEndian)
 }
 
 func (b *Buffer) WriteInt16(i int16) error {
-	return b.WriteUint16(uint16(i))
+	return b.writeInt16(i, nativeEndian)
 }
 
-func (b *Buffer) ReadUint16() (i uint16, err error) {
-	l := b.Readable()
-	if l == 0 {
-		return 0, io.EOF
-	}
-	if l < 2 {
-		return 0, io.ErrUnexpectedEOF
-	}
-
-	i = binary.NativeEndian.Uint16(b.buf[b.off : b.off+2])
-	b.off += 2
-	return
+func (b *Buffer) ReadUint16() (uint16, error) {
+	return b.readUint16(nativeEndian)
 }
 
 func (b *Buffer) WriteUint16(i uint16) error {
-	m, ok := b.tryGrowByReslice(2)
-	if !ok {
-		m = b.grow(2)
-	}
-	binary.NativeEndian.PutUint16(b.buf[m:m+2], i)
-	return nil
+	return b.writeUint16(i, nativeEndian)
 }
 
 func (b *Buffer) ReadInt32() (int32, error) {
-	n, err := b.ReadUint32()
-	return int32(n), err
+	return b.readInt32(nativeEndian)
 }
 
 func (b *Buffer) WriteInt32(i int32) error {
-	return b.WriteUint32(uint32(i))
+	return b.writeInt32(i, nativeEndian)
 }
 
-func (b *Buffer) ReadUint32() (i uint32, err error) {
-	l := b.Readable()
-	if l == 0 {
-		return 0, io.EOF
-	}
-	if l < 2 {
-		return 0, io.ErrUnexpectedEOF
-	}
-
-	i = binary.NativeEndian.Uint32(b.buf[b.off : b.off+4])
-	b.off += 4
-	return
+func (b *Buffer) ReadUint32() (uint32, error) {
+	return b.readUint32(nativeEndian)
 }
 
 func (b *Buffer) WriteUint32(i uint32) error {
-	m, ok := b.tryGrowByReslice(4)
-	if !ok {
-		m = b.grow(4)
-	}
-	binary.NativeEndian.PutUint32(b.buf[m:m+4], i)
-	return nil
+	return b.writeUint32(i, nativeEndian)
 }
 
 func (b *Buffer) ReadInt64() (int64, error) {
-	n, err := b.ReadUint64()
-	return int64(n), err
+	return b.readInt64(nativeEndian)
 }
 
 func (b *Buffer) WriteInt64(i int64) error {
-	return b.WriteUint64(uint64(i))
+	return b.writeInt64(i, nativeEndian)
 }
 
-func (b *Buffer) ReadUint64() (i uint64, err error) {
-	l := b.Readable()
-	if l == 0 {
-		return 0, io.EOF
-	}
-	if l < 2 {
-		return 0, io.ErrUnexpectedEOF
-	}
-
-	i = binary.NativeEndian.Uint64(b.buf[b.off : b.off+8])
-	b.off += 8
-	return
+func (b *Buffer) ReadUint64() (uint64, error) {
+	return b.readUint64(nativeEndian)
 }
 
 func (b *Buffer) WriteUint64(i uint64) error {
-	m, ok := b.tryGrowByReslice(8)
-	if !ok {
-		m = b.grow(8)
-	}
-	binary.NativeEndian.PutUint64(b.buf[m:m+8], i)
-	return nil
+	return b.writeUint64(i, nativeEndian)
+}
+
+func (b *Buffer) ReadFloat32() (float32, error) {
+	return b.readFloat32(nativeEndian)
+}
+
+func (b *Buffer) WriteFloat32(f float32) error {
+	return b.writeFloat32(f, nativeEndian)
+}
+
+func (b *Buffer) ReadFloat64() (float64, error) {
+	return b.readFloat64(nativeEndian)
+}
+
+func (b *Buffer) WriteFloat64(f float64) error {
+	return b.writeFloat64(f, nativeEndian)
 }
 
 func (b *Buffer) ReadBool() (bool, error) {
@@ -484,50 +451,6 @@ func (b *Buffer) WriteUvarint64(i uint64) (int, error) {
 
 	copy(b.buf[m:m+n], buf[:n])
 	return n, nil
-}
-
-func (b *Buffer) WriteFloat32(f float32, order ...binary.ByteOrder) error {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [4]byte
-	if _, err := binary.Encode(buf[:], od, f); err != nil {
-		return err
-	}
-	_, err := b.Write(buf[:])
-	return err
-}
-
-func (b *Buffer) ReadFloat32(order ...binary.ByteOrder) (f float32, err error) {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [4]byte
-	if _, err = b.Read(buf[:]); err != nil {
-		return
-	}
-	if _, err = binary.Decode(buf[:], od, &f); err != nil {
-		return
-	}
-	return
-}
-
-func (b *Buffer) WriteFloat64(f float64, order ...binary.ByteOrder) error {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [8]byte
-	if _, err := binary.Encode(buf[:], od, f); err != nil {
-		return err
-	}
-	_, err := b.Write(buf[:])
-	return err
-}
-
-func (b *Buffer) ReadFloat64(order ...binary.ByteOrder) (f float64, err error) {
-	od := params.OptionalDefault[binary.ByteOrder](binary.NativeEndian, order...)
-	var buf [8]byte
-	if _, err = b.Read(buf[:]); err != nil {
-		return
-	}
-	if _, err = binary.Decode(buf[:], od, &f); err != nil {
-		return
-	}
-	return
 }
 
 func (b *Buffer) Read(p []byte) (int, error) {
