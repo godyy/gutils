@@ -3,10 +3,15 @@ package bytes
 import (
 	"encoding/binary"
 	"errors"
+	"math"
 )
 
 // ErrVarintOverflow  varint值溢出
 var ErrVarintOverflow = errors.New("bytes: varint overflow")
+
+const (
+	MaxStringLength = math.MaxInt32 // maximum string length
+)
 
 // MaxVarintLenN is the maximum length of a varint-encoded N-bit integer.
 const (

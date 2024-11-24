@@ -2,11 +2,9 @@ package bytes
 
 import (
 	"encoding/binary"
-	"io"
-	"math"
-
 	"github.com/godyy/gutils/buffer"
 	"github.com/pkg/errors"
+	"io"
 )
 
 // FixedBuffer 定长字节缓冲区
@@ -412,7 +410,7 @@ func (b *FixedBuffer) ReadString() (string, error) {
 
 func (b *FixedBuffer) WriteString(s string) error {
 	l := len(s)
-	if l > math.MaxInt32 {
+	if l > MaxStringLength {
 		return buffer.ErrStringLenExceedLimit
 	}
 

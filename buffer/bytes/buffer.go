@@ -3,11 +3,9 @@ package bytes
 import (
 	"encoding/binary"
 	"errors"
-	"io"
-	"math"
-
 	"github.com/godyy/gutils/buffer"
 	pkg_errors "github.com/pkg/errors"
+	"io"
 )
 
 // ErrBufferTooLarge is passed to panic if memory cannot be allocated to store data in a buffer.
@@ -504,7 +502,7 @@ func (b *Buffer) ReadString() (string, error) {
 
 func (b *Buffer) WriteString(s string) error {
 	l := len(s)
-	if l > math.MaxInt32 {
+	if l > MaxStringLength {
 		return buffer.ErrStringLenExceedLimit
 	}
 
