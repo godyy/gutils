@@ -11,4 +11,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require go.uber.org/multierr v1.11.0 // indirect
+require (
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
+)
