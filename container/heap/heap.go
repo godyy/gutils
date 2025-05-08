@@ -3,9 +3,9 @@ package heap
 import "container/heap"
 
 // Element 实现Element即可作为Heap元素
-type Element interface {
+type Element[E any] interface {
 	// HeapLess Element比较
-	HeapLess(Element) bool
+	HeapLess(E) bool
 
 	// SetHeapIndex 设置索引
 	SetHeapIndex(int)
@@ -16,7 +16,7 @@ type Element interface {
 
 // heapList 堆元素列表
 // 实现heap.Interface的容器
-type heapList[Elem Element] []Elem
+type heapList[Elem Element[Elem]] []Elem
 
 func (h heapList[Elem]) Len() int {
 	return len(h)
@@ -47,12 +47,12 @@ func (h *heapList[Elem]) Pop() any {
 }
 
 // Heap 堆容器
-type Heap[Elem Element] struct {
+type Heap[Elem Element[Elem]] struct {
 	minCap int            // 堆的最小容量
 	list   heapList[Elem] // 堆元素列表
 }
 
-func NewHeap[Elem Element](minCap ...int) *Heap[Elem] {
+func NewHeap[Elem Element[Elem]](minCap ...int) *Heap[Elem] {
 	h := &Heap[Elem]{}
 	if len(minCap) > 0 && minCap[0] > 0 {
 		h.minCap = minCap[0]
@@ -98,13 +98,13 @@ func (h *Heap[Elem]) Pop() Elem {
 }
 
 // Remove 移除堆中指定位置的元素
-func (h *Heap[Elem]) Remove(i int) Element {
+func (h *Heap[Elem]) Remove(i int) Elem {
 	if i < 0 || i >= h.list.Len() {
 		panic("index out of range")
 	}
 	x := heap.Remove(&h.list, i)
 	h.adjustCap()
-	return x.(Element)
+	return x.(Elem)
 }
 
 // Fix 修正指定位置元素的位置

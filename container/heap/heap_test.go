@@ -9,23 +9,23 @@ type testElement struct {
 	index int
 }
 
-func (t testElement) HeapLess(element Element) bool {
-	return t.value < element.(testElement).value
+func (t *testElement) HeapLess(element *testElement) bool {
+	return t.value < element.value
 }
 
-func (t testElement) SetHeapIndex(i int) {
+func (t *testElement) SetHeapIndex(i int) {
 	t.index = i
 }
 
-func (t testElement) HeapIndex() int {
+func (t *testElement) HeapIndex() int {
 	return t.index
 }
 
 func TestHeap(t *testing.T) {
-	heap := NewHeap[testElement](10)
+	heap := NewHeap[*testElement](10)
 
 	for i := 0; i < 1e2; i++ {
-		heap.Push(testElement{
+		heap.Push(&testElement{
 			value: i,
 			index: -1,
 		})
@@ -36,4 +36,23 @@ func TestHeap(t *testing.T) {
 		heap.Pop()
 		t.Log(heap.Len(), cap(heap.list), heap.list)
 	}
+}
+
+func BenchmarkHeap(b *testing.B) {
+	heap := NewHeap[*testElement](10)
+
+	b.Run("push", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			heap.Push(&testElement{
+				value: i,
+				index: -1,
+			})
+		}
+	})
+
+	b.Run("pop", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			heap.Pop()
+		}
+	})
 }
