@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// Level 日志等级.
 type Level = zapcore.Level
 
 const (
@@ -23,6 +24,7 @@ const (
 	FatalLevel  = zap.FatalLevel
 )
 
+// Logger 封装日志接口.
 type Logger interface {
 	// Level 获取启动的最小日志level
 	Level() Level
@@ -47,12 +49,6 @@ type Logger interface {
 
 	// WithOptions 复制logger并应用选项
 	WithOptions(opts ...zap.Option) Logger
-
-	// Origin 获取源logger
-	Origin() Logger
-
-	// Root 获取最源头的logger
-	Root() Logger
 
 	// Debug for DebugLevel
 	Debug(v ...any)
@@ -104,49 +100,46 @@ type Logger interface {
 	Fatalw(msg string, keyAndValues ...any)
 }
 
-// Config 提供创建Logger需要用到的相关配置项
+// Config 提供创建Logger需要用到的相关配置项.
 type Config struct {
-	// 日志等级
-	Level Level `json:"Level" yaml:"Level"`
+	// Level 日志等级.
+	Level Level
 
-	// 是否记录日志caller
-	EnableCaller bool `json:"EnableCaller" yaml:"EnableCaller"`
+	// EnableCaller 是否记录日志caller.
+	EnableCaller bool
 
-	// 默认为0
-	CallerSkip int `json:"CallerSkip" yaml:"CallerSkip"`
+	// CallerSkip 默认为0.
+	CallerSkip int
 
-	// 是否开发模式, 控制 DPanicLevel 是否 log panic
-	Development bool `json:"development" yaml:"development"`
+	// Development 是否开发模式, 控制 DPanicLevel 是否 log panic
+	Development bool
 
-	// 是否将日志输出到标准输出
-	EnableStdOutput bool `json:"EnableStdOutput" yaml:"EnableStdOutput"`
+	// EnableStdOutput 是否将日志输出到标准输出.
+	EnableStdOutput bool
 
-	// 是否将日志输出到文件
-	EnableFileOutput bool `json:"EnableFileOutput" yaml:"EnableFileOutput"`
-
-	// 指定文件输出相关参数
-	FileOutput FileOutput `json:"FileOutput" yaml:"FileOutput"`
+	// FileOutput 指定文件输出相关参数. 缺省表示不输出到文件.
+	FileOutput *FileOutput
 }
 
 // FileOutput 日志文件输出相关选项参数
 type FileOutput struct {
-	// 文件路径
-	FileName string `json:"FileName" yaml:"FileName"`
+	// Path 文件路径
+	Path string
 
-	// 文件大小上限，用于切割日志文件
-	MaxSize int `json:"MaxSize" yaml:"MaxSize"`
+	// MaxSize 文件大小上限，用于切割日志文件.
+	MaxSize int
 
-	// 文件保留的周期（天）
-	MaxAge int `json:"MaxAge" yaml:"MaxAge"`
+	// MaxAge 文件保留的周期 天.
+	MaxAge int
 
-	// 最大备份数量
-	MaxBackups int `json:"MaxBackups" yaml:"MaxBackups"`
+	// MaxBackups 最大备份数量.
+	MaxBackups int
 
-	// 切割文件时是否使用本地时间
-	LocalTime bool `json:"LocalTime" yaml:"LocalTime"`
+	// LocalTime 切割文件时是否使用本地时间.
+	LocalTime bool
 
-	// 是否压缩日志
-	Compress bool `json:"Compress" yaml:"Compress"`
+	// Compress 是否压缩日志.
+	Compress bool
 }
 
 func createStdCore(c *Config) (zapcore.Core, error) {
@@ -176,8 +169,8 @@ func createStdCore(c *Config) (zapcore.Core, error) {
 }
 
 func createFileCore(c *Config) (zapcore.Core, error) {
-	if c.FileOutput.FileName == "" {
-		return nil, errors.New("FileName not specified")
+	if c.FileOutput.Path == "" {
+		return nil, errors.New("path not specified")
 	}
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
@@ -187,7 +180,7 @@ func createFileCore(c *Config) (zapcore.Core, error) {
 	return zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderConfig),
 		zapcore.AddSync(&lumberjack.Logger{
-			Filename:   c.FileOutput.FileName,
+			Filename:   c.FileOutput.Path,
 			MaxSize:    c.FileOutput.MaxSize,
 			MaxAge:     c.FileOutput.MaxAge,
 			MaxBackups: c.FileOutput.MaxBackups,
@@ -200,17 +193,17 @@ func createFileCore(c *Config) (zapcore.Core, error) {
 	), nil
 }
 
+// logger Logger 内部实现.
 type logger struct {
 	config *Config            // 配置
 	zap    *zap.Logger        // 结构化日志
 	sugar  *zap.SugaredLogger // printf-like 日志
-	origin *logger            // 源，标记clone自
 }
 
 func CreateLogger(c *Config) (Logger, error) {
 	var cores []zapcore.Core
 
-	if c.EnableStdOutput || !c.EnableFileOutput {
+	if c.EnableStdOutput || c.FileOutput == nil {
 		core, err := createStdCore(c)
 		if err != nil {
 			return nil, err
@@ -218,7 +211,7 @@ func CreateLogger(c *Config) (Logger, error) {
 		cores = append(cores, core)
 	}
 
-	if c.EnableFileOutput {
+	if c.FileOutput != nil {
 		core, err := createFileCore(c)
 		if err != nil {
 			return nil, err
@@ -289,22 +282,7 @@ func (l *logger) WithOptions(opts ...zap.Option) Logger {
 
 func (l *logger) clone() *logger {
 	clone := *l
-	clone.origin = l
 	return &clone
-}
-
-func (l *logger) Origin() Logger {
-	if l.origin == nil {
-		return l
-	}
-	return l.origin
-}
-
-func (l *logger) Root() Logger {
-	if l.origin == nil {
-		return l
-	}
-	return l.origin.Root()
 }
 
 func (l *logger) Debug(v ...any) {

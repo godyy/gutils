@@ -15,13 +15,12 @@ func TestConfig(t *testing.T) {
 	os.Mkdir("bin", os.ModePerm)
 
 	c := &Config{
-		Level:            DebugLevel,
-		EnableCaller:     true,
-		Development:      true,
-		EnableStdOutput:  true,
-		EnableFileOutput: true,
-		FileOutput: FileOutput{
-			FileName:   "bin/test.log",
+		Level:           DebugLevel,
+		EnableCaller:    true,
+		Development:     true,
+		EnableStdOutput: true,
+		FileOutput: &FileOutput{
+			Path:       "bin/test.log",
 			MaxSize:    1,
 			MaxAge:     7,
 			MaxBackups: 0,
@@ -76,13 +75,12 @@ func TestFileLogger(t *testing.T) {
 	os.Mkdir("bin", os.ModePerm)
 
 	logger, err := CreateLogger(&Config{
-		Level:            DebugLevel,
-		EnableCaller:     true,
-		Development:      true,
-		EnableStdOutput:  false,
-		EnableFileOutput: true,
-		FileOutput: FileOutput{
-			FileName:   "bin/test.log",
+		Level:           DebugLevel,
+		EnableCaller:    true,
+		Development:     true,
+		EnableStdOutput: false,
+		FileOutput: &FileOutput{
+			Path:       "bin/test.log",
 			MaxSize:    1,
 			MaxAge:     7,
 			MaxBackups: 0,
@@ -109,13 +107,12 @@ func TestStdFileLogger(t *testing.T) {
 	os.Mkdir("bin", os.ModePerm)
 
 	logger, err := CreateLogger(&Config{
-		Level:            DebugLevel,
-		EnableCaller:     true,
-		Development:      true,
-		EnableStdOutput:  true,
-		EnableFileOutput: true,
-		FileOutput: FileOutput{
-			FileName:   "bin/test.log",
+		Level:           DebugLevel,
+		EnableCaller:    true,
+		Development:     true,
+		EnableStdOutput: true,
+		FileOutput: &FileOutput{
+			Path:       "bin/test.log",
 			MaxSize:    1,
 			MaxAge:     7,
 			MaxBackups: 0,
