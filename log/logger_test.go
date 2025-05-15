@@ -5,62 +5,17 @@ import (
 	"testing"
 
 	"go.uber.org/zap"
-
-	"github.com/BurntSushi/toml"
-
-	"gopkg.in/yaml.v3"
 )
 
-func TestConfig(t *testing.T) {
-	os.Mkdir("bin", os.ModePerm)
-
-	c := &Config{
-		Level:           DebugLevel,
-		EnableCaller:    true,
-		Development:     true,
-		EnableStdOutput: true,
-		FileOutput: &FileOutput{
-			Path:       "bin/test.log",
-			MaxSize:    1,
-			MaxAge:     7,
-			MaxBackups: 0,
-			LocalTime:  true,
-			Compress:   true,
-		},
-	}
-
-	bytes, err := yaml.Marshal(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile("bin/config-test.yaml", bytes, os.ModePerm); err != nil {
-		t.Fatal(err)
-	}
-	if err := yaml.Unmarshal(bytes, c); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(c)
-
-	file, err := os.Create("bin/config-test.toml")
-	if err := toml.NewEncoder(file).Encode(c); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := toml.DecodeFile("bin/config-test.toml", c); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(c)
-}
-
 func TestStdLogger(t *testing.T) {
-	logger, err := CreateLogger(&Config{
-		Level:           DebugLevel,
-		EnableCaller:    true,
-		Development:     true,
-		EnableStdOutput: true,
+	logger := NewLogger(&Config{
+		Level:        DebugLevel,
+		EnableCaller: true,
+		Development:  true,
+		Cores: []CoreConfig{
+			NewStdCoreConfig(),
+		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	logger.Debug(DebugLevel)
 	logger.Info(InfoLevel)
@@ -74,23 +29,21 @@ func TestStdLogger(t *testing.T) {
 func TestFileLogger(t *testing.T) {
 	os.Mkdir("bin", os.ModePerm)
 
-	logger, err := CreateLogger(&Config{
-		Level:           DebugLevel,
-		EnableCaller:    true,
-		Development:     true,
-		EnableStdOutput: false,
-		FileOutput: &FileOutput{
-			Path:       "bin/test.log",
-			MaxSize:    1,
-			MaxAge:     7,
-			MaxBackups: 0,
-			LocalTime:  true,
-			Compress:   false,
+	logger := NewLogger(&Config{
+		Level:        DebugLevel,
+		EnableCaller: true,
+		Development:  true,
+		Cores: []CoreConfig{
+			NewFileCoreConfig(&FileCoreParams{
+				Path:       "bin/test.log",
+				MaxSize:    1,
+				MaxAge:     7,
+				MaxBackups: 0,
+				LocalTime:  true,
+				Compress:   false,
+			}),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	for i := 0; i < 1e4; i++ {
 		logger.Debug(DebugLevel)
@@ -106,23 +59,22 @@ func TestFileLogger(t *testing.T) {
 func TestStdFileLogger(t *testing.T) {
 	os.Mkdir("bin", os.ModePerm)
 
-	logger, err := CreateLogger(&Config{
-		Level:           DebugLevel,
-		EnableCaller:    true,
-		Development:     true,
-		EnableStdOutput: true,
-		FileOutput: &FileOutput{
-			Path:       "bin/test.log",
-			MaxSize:    1,
-			MaxAge:     7,
-			MaxBackups: 0,
-			LocalTime:  true,
-			Compress:   false,
+	logger := NewLogger(&Config{
+		Level:        DebugLevel,
+		EnableCaller: true,
+		Development:  true,
+		Cores: []CoreConfig{
+			NewStdCoreConfig(),
+			NewFileCoreConfig(&FileCoreParams{
+				Path:       "bin/test.log",
+				MaxSize:    1,
+				MaxAge:     7,
+				MaxBackups: 0,
+				LocalTime:  true,
+				Compress:   false,
+			}),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	for i := 0; i < 1e4; i++ {
 		logger.Debug(DebugLevel)
@@ -136,15 +88,14 @@ func TestStdFileLogger(t *testing.T) {
 }
 
 func TestLoggerMisc(t *testing.T) {
-	logger, err := CreateLogger(&Config{
-		Level:           DebugLevel,
-		EnableCaller:    true,
-		Development:     true,
-		EnableStdOutput: true,
+	logger := NewLogger(&Config{
+		Level:        DebugLevel,
+		EnableCaller: true,
+		Development:  true,
+		Cores: []CoreConfig{
+			NewStdCoreConfig(),
+		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	logger.Warn("misc")
 
@@ -160,15 +111,14 @@ func TestLoggerMisc(t *testing.T) {
 }
 
 func TestLogger_WithFieldsLazy(t *testing.T) {
-	logger, err := CreateLogger(&Config{
-		Level:           DebugLevel,
-		EnableCaller:    true,
-		Development:     true,
-		EnableStdOutput: true,
+	logger := NewLogger(&Config{
+		Level:        DebugLevel,
+		EnableCaller: true,
+		Development:  true,
+		Cores: []CoreConfig{
+			NewStdCoreConfig(),
+		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	logger = logger.WithFieldsLazy(zap.String("lazy1", "lazy1")).WithFieldsLazy(zap.String("lazy2", "lazy2"))
 	logger.Info("lazy")
