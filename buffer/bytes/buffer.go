@@ -3,12 +3,13 @@ package bytes
 import (
 	"encoding/binary"
 	"errors"
+	"io"
+
 	"github.com/godyy/gutils/buffer"
 	pkg_errors "github.com/pkg/errors"
-	"io"
 )
 
-// ErrBufferTooLarge is passed to panic if memory cannot be allocated to store data in a buffer.
+// ErrBufferTooLarge is passed to panic if memory cannot be allocated to store db in a buffer.
 var ErrBufferTooLarge = errors.New("bytes: buffer too large")
 
 // smallBufferSize is an initial allocation minimal capacity.
