@@ -8,6 +8,7 @@
 - 语言/版本：Go 1.22
 - 现有依赖：github.com/pkg/errors、github.com/rs/xid、golang.org/x/crypto、gopkg.in/check.v1
 - 主要包：
+  - gutils（根包通用辅助函数，如 Must 系列）
   - buffer（bytes、fixed_buffer 等）
   - container（heap、set、skiplist）
   - crypto/password
@@ -34,9 +35,11 @@
 - 错误处理
   - 返回 error 为主；保留上下文信息，使用 github.com/pkg/errors 进行包装（Wrap/WithStack）。
   - 不在库中打印日志；将上下文向上传递，由调用方决定记录方式。
+  - 若提供 `Must*` 这类辅助函数，需明确其 panic 语义仅用于调用方接受 fail-fast 的场景，不应替代正常错误返回 API。
 - 文档与可读性
   - 为导出类型、函数、接口编写注释，说明语义、边界与复杂度。
   - 在涉及性能权衡的实现中，简述设计意图和限制。
+  - 对 `Must`、`MustAny`、`MustT` 一类 API，注释中需直接说明“何时 panic、何时返回值”，避免语义歧义。
 - 性能与内存
   - 避免不必要分配与拷贝；热点路径尽量零分配。
   - 对性能敏感改动提供 Benchmark 与对比数据。
@@ -46,6 +49,9 @@
 
 ## 包级注意事项（示例）
 
+- gutils（root package）
+  - 根包适合放置跨包复用、依赖极少的通用辅助函数；保持 API 极简，避免把具体业务语义塞入根包。
+  - `Must` 系列应保持零额外状态、零副作用：仅在 `err != nil` 时 panic，否则直接返回原值或无操作。
 - buffer
   - 关注容量扩展策略与 Endian 读写一致性；遵循 io.Reader/Writer 语义预期。
 - container（heap、skiplist、set）
@@ -67,6 +73,7 @@
 - 测试质量
   - 避免脆弱用例；对时间/随机性使用可控制注入或固定种子。
   - 错误路径与边界条件应有覆盖。
+  - 对 `Must*`/panic 风格 API，需同时覆盖“不 panic 的正常路径”与“按预期 panic 的错误路径”。
 
 ## 依赖与版本
 
@@ -86,6 +93,7 @@
 
 - API 语义清晰、命名一致、无多余暴露。
 - 错误处理保留上下文且不吞错。
+- `Must*` 等 fail-fast API 的 panic 条件清晰、注释完整，且未挤占原本应返回 `error` 的常规接口。
 - 并发安全（无泄漏、无竞态），可通过 `-race`。
 - 性能不回退，基准数据充分。
 - 单测覆盖边界与错误路径，稳定不脆弱。
@@ -110,4 +118,3 @@ go vet ./...
 ---
 
 若需要新增通用工具包，请参考现有目录结构与实现风格；提交前确保通过测试与竞态检测，并补充必要文档与基准数据。
-
