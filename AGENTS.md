@@ -10,7 +10,7 @@
 - 主要包：
   - gutils（根包通用辅助函数，如 Must 系列）
   - buffer（bytes、fixed_buffer 等）
-  - container（heap、set、skiplist）
+  - container（heap、set、skiplist、 lru）
   - crypto/password
   - debug（stacktrace）
   - deepcopy
@@ -54,7 +54,7 @@
   - `Must` 系列应保持零额外状态、零副作用：仅在 `err != nil` 时 panic，否则直接返回原值或无操作。
 - buffer
   - 关注容量扩展策略与 Endian 读写一致性；遵循 io.Reader/Writer 语义预期。
-- container（heap、skiplist、set）
+- container（heap、skiplist、set、lru）
   - 明确时间复杂度；必要时提供示例/基准与对比。
 - ratelimit（counter、leaky_bucket、token_bucket）
   - 支持高并发访问；已存在基于 atomic 与 mutex 的实现，保持接口一致与测试覆盖。
