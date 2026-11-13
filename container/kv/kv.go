@@ -17,13 +17,23 @@ import (
 	"github.com/godyy/gutils/deepcopy"
 )
 
-// kI 键的内部接口, 由 K 实现.
-type kI interface {
+// KI 键的内部接口, 由 K 实现.
+type KI interface {
 	// value 返回映射实际使用的键值.
 	value() any
 
 	// check 校验值 v 的类型是否与键匹配, 不匹配则 panic.
 	check(v any)
+}
+
+// MI 映射的内部接口, 由 M 实现.
+type MI interface {
+	// Set 设置键 k 对应的值为 v, 键不存在时新增.
+	Set(k, v any)
+
+	// Get 返回键 k 对应的值与是否存在.
+	// 键不存在时返回 nil, false; 若 k 是 K, 还会校验存储值的类型, 不匹配则 panic.
+	Get(k any) (any, bool)
 }
 
 // K 带类型信息的键, 其值类型为 V.
@@ -76,9 +86,14 @@ func (k K[V]) check(v any) {
 	panic(fmt.Sprintf("kv: K.check: key %s, value %v is not of type %v", *k.string, v, reflect.TypeFor[V]()))
 }
 
+// Set 设置键 k 对应的值为 v, 键不存在时新增.
+func (k K[V]) Set(m MI, v V) {
+	m.Set(k, v)
+}
+
 // Get 返回键 k 在映射 m 中对应的值.
 // exist 表示键 k 是否存在; 当存储的值为 nil 时返回零值与 true.
-func (k K[V]) Get(m *M) (v V, exist bool) {
+func (k K[V]) Get(m MI) (v V, exist bool) {
 	if vv, exist := m.Get(k); !exist {
 		return v, false
 	} else if vv == nil {
@@ -104,7 +119,8 @@ type M struct {
 // pairs 的元素个数必须为偶数, 否则 panic; 重复的键会静默覆盖.
 func NewM(pairs ...any) *M {
 	m := &M{}
-	return m.SetPairs(pairs...)
+	m.SetPairs(pairs...)
+	return m
 }
 
 // Len 返回映射中键值对的数量.
@@ -114,8 +130,8 @@ func (m *M) Len() int {
 
 // Set 设置键 k 对应的值为 v, 键不存在时新增.
 // 若 k 是 K, 会先校验 v 的类型, 不匹配则 panic.
-func (m *M) Set(k, v any) *M {
-	if ki, ok := k.(kI); ok {
+func (m *M) Set(k, v any) {
+	if ki, ok := k.(KI); ok {
 		ki.check(v)
 		k = ki.value()
 	}
@@ -123,12 +139,11 @@ func (m *M) Set(k, v any) *M {
 		m.m = make(map[any]any)
 	}
 	m.m[k] = v
-	return m
 }
 
 // SetPairs 设置多个键值对.
 // pairs 的元素个数必须为偶数, 否则 panic; 重复的键会静默覆盖.
-func (m *M) SetPairs(pairs ...any) *M {
+func (m *M) SetPairs(pairs ...any) {
 	if len(pairs)%2 != 0 {
 		panic("kv: M.SetPairs: pairs must be even")
 	}
@@ -138,13 +153,12 @@ func (m *M) SetPairs(pairs ...any) *M {
 	for i := 0; i < len(pairs); i += 2 {
 		m.Set(pairs[i], pairs[i+1])
 	}
-	return m
 }
 
 // Get 返回键 k 对应的值与是否存在.
 // 键不存在时返回 nil, false; 若 k 是 K, 还会校验存储值的类型, 不匹配则 panic.
 func (m *M) Get(k any) (any, bool) {
-	if ki, ok := k.(kI); ok {
+	if ki, ok := k.(KI); ok {
 		v, exist := m.m[ki.value()]
 		if !exist {
 			return nil, false
@@ -159,7 +173,7 @@ func (m *M) Get(k any) (any, bool) {
 // Del 删除键 k 对应的键值对.
 // 若 k 是 K, 会先校验存储值的类型, 不匹配则 panic.
 func (m *M) Del(k any) (any, bool) {
-	ki, ok := k.(kI)
+	ki, ok := k.(KI)
 	if !ok {
 		v, exist := m.m[k]
 		if !exist {
