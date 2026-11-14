@@ -17,16 +17,21 @@ import (
 	"github.com/godyy/gutils/deepcopy"
 )
 
-// KI 键的内部接口, 由 K 实现.
+// KI 键的接口, 由 K 实现.
+//
+// 接口内含未导出方法, 因此只有本包内的类型能实现它(封闭接口), 用于擦除键的泛型信息后统一处理.
 type KI interface {
 	// value 返回映射实际使用的键值.
 	value() any
 
 	// check 校验值 v 的类型是否与键匹配, 不匹配则 panic.
 	check(v any)
+
+	// String 返回键的字符串描述, 实现 fmt.Stringer.
+	String() string
 }
 
-// MI 映射的内部接口, 由 M 实现.
+// MI 映射的接口, 由 M 实现.
 type MI interface {
 	// Set 设置键 k 对应的值为 v, 键不存在时新增.
 	Set(k, v any)
@@ -34,6 +39,9 @@ type MI interface {
 	// Get 返回键 k 对应的值与是否存在.
 	// 键不存在时返回 nil, false; 若 k 是 K, 还会校验存储值的类型, 不匹配则 panic.
 	Get(k any) (any, bool)
+
+	// Must 返回键 k 对应的值, 键不存在时 panic.
+	Must(k any) any
 }
 
 // K 带类型信息的键, 其值类型为 V.
@@ -48,10 +56,11 @@ type K[V any] struct {
 }
 
 // NewK 创建一个值类型为 V、名称为 s 的键.
-// s 仅用于错误信息等可读性用途, 不参与判等; 每次调用都返回一个新的键.
+// 键的实际名称会被格式化为 "s(类型)" 仅用于错误信息等可读性用途, 不参与判等;
+// 每次调用都返回一个新的键.
 func NewK[V any](s string) K[V] {
 	k := K[V]{string: new(string)}
-	*k.string = s
+	*k.string = fmt.Sprintf("%s(%s)", s, reflect.TypeFor[V]())
 	return k
 }
 
@@ -63,13 +72,13 @@ func (k K[V]) mustInit() {
 	}
 }
 
-// value 返回用作映射键的内部标识, 实现 kI.
+// value 返回用作映射键的内部标识, 实现 KI.
 func (k K[V]) value() any {
 	k.mustInit()
 	return k.string
 }
 
-// check 校验值 v 的类型是否为 V, 实现 kI.
+// check 校验值 v 的类型是否为 V, 实现 KI.
 // v 为 nil 时仅当 V 可赋 nil 才通过; 校验失败则 panic.
 func (k K[V]) check(v any) {
 	k.mustInit()
@@ -86,7 +95,14 @@ func (k K[V]) check(v any) {
 	panic(fmt.Sprintf("kv: K.check: key %s, value %v is not of type %v", *k.string, v, reflect.TypeFor[V]()))
 }
 
-// Set 设置键 k 对应的值为 v, 键不存在时新增.
+// String 返回键的字符串描述, 实现 fmt.Stringer.
+// 零值键未初始化, 调用会 panic.
+func (k K[V]) String() string {
+	k.mustInit()
+	return *k.string
+}
+
+// Set 通过键 k 在映射 m 上设置值 v, 键不存在时新增.
 func (k K[V]) Set(m MI, v V) {
 	m.Set(k, v)
 }
@@ -101,6 +117,17 @@ func (k K[V]) Get(m MI) (v V, exist bool) {
 	} else {
 		return vv.(V), true
 	}
+}
+
+// Must 返回键 k 在映射 m 中对应的值, 键不存在时 panic.
+// 与 Get 一致, 存储的值为 nil 时返回零值.
+func (k K[V]) Must(m MI) V {
+	vv := m.Must(k)
+	if vv == nil {
+		var v V
+		return v
+	}
+	return vv.(V)
 }
 
 // M 键值映射.
@@ -170,6 +197,16 @@ func (m *M) Get(k any) (any, bool) {
 	return v, exist
 }
 
+// Must 返回键 k 对应的值, 键不存在时 panic.
+// 若 k 是 K, 还会校验存储值的类型, 不匹配则 panic.
+func (m *M) Must(k any) any {
+	v, exist := m.Get(k)
+	if !exist {
+		panic(fmt.Sprintf("kv: M.Must: key %v not found", k))
+	}
+	return v
+}
+
 // Del 删除键 k 对应的键值对.
 // 若 k 是 K, 会先校验存储值的类型, 不匹配则 panic.
 func (m *M) Del(k any) (any, bool) {
@@ -228,4 +265,14 @@ func canBeNil[T any]() bool {
 	default:
 		return false
 	}
+}
+
+// Get 返回键 k 在映射 m 中对应的值, 等价于 k.Get(m).
+func Get[V any](m MI, k K[V]) (v V, exist bool) {
+	return k.Get(m)
+}
+
+// Must 返回键 k 在映射 m 中对应的值, 键不存在时 panic, 等价于 k.Must(m).
+func Must[V any](m MI, k K[V]) V {
+	return k.Must(m)
 }

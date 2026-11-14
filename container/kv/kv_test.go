@@ -385,6 +385,90 @@ func TestM_DelTypeMismatchPanic(t *testing.T) {
 	mustPanic(t, func() { m.Del(ks) })
 }
 
+// TestK_String 覆盖键的字符串描述与零值守卫.
+func TestK_String(t *testing.T) {
+	if s := NewK[int]("n").String(); s != "n(int)" {
+		t.Fatalf("String = %q, 期待 %q", s, "n(int)")
+	}
+	// 零值键未初始化, String 会 panic
+	var zk K[int]
+	mustPanic(t, func() { _ = zk.String() })
+}
+
+// TestK_Set 通过 K.Set 写入.
+func TestK_Set(t *testing.T) {
+	m := NewM()
+	testKeyInt.Set(m, 1)
+	if v, ok := testKeyInt.Get(m); !ok || v != 1 {
+		t.Fatalf("Get = %v, %v", v, ok)
+	}
+}
+
+// TestK_Must 覆盖 Must: 存在时返回值, 不存在时 panic, nil 值时返回零值.
+func TestK_Must(t *testing.T) {
+	m := NewM(testKeyInt, 1)
+	if v := testKeyInt.Must(m); v != 1 {
+		t.Fatalf("Must = %v, 期待 1", v)
+	}
+	mustPanic(t, func() { testKeyString.Must(m) })
+
+	// 存储的值为 nil 属于合法值, Must 应返回零值而非 panic
+	m.Set(testKeyPtr, nil)
+	if v := testKeyPtr.Must(m); v != nil {
+		t.Fatalf("Must = %v, 期待 nil", v)
+	}
+}
+
+// TestGetMustFunc 覆盖包级 Get/Must.
+func TestGetMustFunc(t *testing.T) {
+	m := NewM(testKeyInt, 1)
+	if v, ok := Get(m, testKeyInt); !ok || v != 1 {
+		t.Fatalf("Get = %v, %v", v, ok)
+	}
+	if v := Must(m, testKeyInt); v != 1 {
+		t.Fatalf("Must = %v, 期待 1", v)
+	}
+	mustPanic(t, func() { Must(m, testKeyString) })
+}
+
+// TestM_Must 覆盖 M.Must.
+func TestM_Must(t *testing.T) {
+	m := NewM(testKeyInt, 1, "b", 2)
+	if v := m.Must(testKeyInt); v != 1 {
+		t.Fatalf("Must = %v, 期待 1", v)
+	}
+	if v := m.Must("b"); v != 2 {
+		t.Fatalf("Must = %v, 期待 2", v)
+	}
+	// 键不存在时 panic
+	mustPanic(t, func() { m.Must("not-exist") })
+	// 存储 nil 值时正常返回
+	m.Set(testKeyPtr, nil)
+	if v := m.Must(testKeyPtr); v != nil {
+		t.Fatalf("Must = %v, 期待 nil", v)
+	}
+}
+
+// TestMI_KIImpl 确认 *M 实现 MI, K 实现 KI.
+func TestMI_KIImpl(t *testing.T) {
+	var _ MI = &M{}
+	var _ KI = K[int]{}
+}
+
+// TestM_SetPairs 覆盖批量设置.
+func TestM_SetPairs(t *testing.T) {
+	m := NewM()
+	m.SetPairs(testKeyInt, 1, "b", 2)
+	if m.Len() != 2 {
+		t.Fatalf("Len = %d, 期待 2", m.Len())
+	}
+	if v, ok := testKeyInt.Get(m); !ok || v != 1 {
+		t.Fatalf("Get = %v, %v", v, ok)
+	}
+	// 参数个数为奇数时 panic
+	mustPanic(t, func() { m.SetPairs(testKeyInt) })
+}
+
 // TestCanBeNil 覆盖类型可赋 nil 的判断.
 func TestCanBeNil(t *testing.T) {
 	if !canBeNil[any]() || !canBeNil[*int]() || !canBeNil[[]int]() ||
